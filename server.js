@@ -193,6 +193,23 @@ app.post('/api/auth/login', async (req, res) => {
       is_admin: user.is_admin,
     });
 
+    return res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        is_admin: user.is_admin,
+      },
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
 /**
  * Submit article: POST /api/articles
  * Headers: Authorization: Bearer <token>
@@ -211,7 +228,7 @@ app.post('/api/articles', requireAuth, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO articles (user_id, title, abstract, body, keywords, status)
        VALUES ($1, $2, $3, $4, $5, 'submitted')
-       RETURNING id, user_id, title, abstract, body, keywords, status, created_at, updated_at`,
+       RETURNING id, user_id, title, abstract, body, keywords, status, zenodo_doi, zenodo_url, created_at, updated_at`,
       [req.user.id, title, abstract || null, body, keywords || null]
     );
 
@@ -226,20 +243,49 @@ app.post('/api/articles', requireAuth, async (req, res) => {
   }
 });
 
-    return res.json({
+/**
+ * Public list of published articles: GET /api/public/articles
+ * Returns Zenodo fields for use on the /journal page.
+ */
+app.get('/api/public/articles', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         a.id,
+         a.title,
+         a.abstract,
+         a.keywords,
+         a.status,
+         a.zenodo_doi,
+         a.zenodo_url,
+         a.created_at,
+         a.updated_at,
+         u.first_name,
+         u.last_name
+       FROM articles a
+       LEFT JOIN users u ON a.user_id = u.id
+       WHERE a.status = 'published'
+       ORDER BY a.created_at DESC`
+    );
 
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        is_admin: user.is_admin,
-      },
-    });
+    const articles = result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      abstract: row.abstract,
+      keywords: row.keywords,
+      status: row.status,
+      zenodo_doi: row.zenodo_doi,
+      zenodo_url: row.zenodo_url,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      author_name: row.first_name && row.last_name
+        ? `${row.first_name} ${row.last_name}`
+        : null,
+    }));
+
+    return res.json({ articles });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Public articles list error:', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });
