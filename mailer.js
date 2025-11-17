@@ -49,3 +49,37 @@ async function sendWelcomeMail(toEmail, firstName) {
 
 module.exports = { transporter, sendTestMail, sendWelcomeMail };
 
+async function sendPasswordResetMail(toEmail, token) {
+  const resetUrl = `${process.env.APP_BASE_URL || ''}/reset-password?token=${token}`;
+
+  const info = await transporter.sendMail({
+    from: `"Journal of Maritime Medicine" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: 'Reset your password – Journal of Maritime Medicine',
+    text: `Dear colleague,
+
+We received a request to reset your password for the Journal of Maritime Medicine account.
+
+Please click the link below (or copy and paste it into your browser) to set a new password:
+
+${resetUrl}
+
+If you did not request this, you can safely ignore this email.
+
+Best regards,
+Journal of Maritime Medicine`,
+    html: `
+      <p>Dear colleague,</p>
+      <p>We received a request to reset your password for the <strong>Journal of Maritime Medicine</strong> account.</p>
+      <p>Please click the link below (or copy and paste it into your browser) to set a new password:</p>
+      <p><a href="${resetUrl}">${resetUrl}</a></p>
+      <p>If you did not request this, you can safely ignore this email.</p>
+      <p>Best regards,<br>Journal of Maritime Medicine</p>
+    `,
+  });
+
+  console.log('Password reset mail sent to', toEmail, 'id:', info.messageId);
+}
+
+module.exports = { transporter, sendTestMail, sendWelcomeMail, sendPasswordResetMail };
+
