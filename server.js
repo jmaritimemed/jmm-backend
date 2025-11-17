@@ -1,6 +1,7 @@
 // server.js
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -15,6 +16,11 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
+
+// Allow requests from your main site
+app.use(cors({
+  origin: 'https://jmaritimemed.com'
+}));
 
 // Parse JSON and URL-encoded form bodies
 app.use(express.json());
