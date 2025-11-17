@@ -193,6 +193,39 @@ app.post('/api/auth/login', async (req, res) => {
       is_admin: user.is_admin,
     });
 
+/**
+ * Submit article: POST /api/articles
+ * Headers: Authorization: Bearer <token>
+ * Body: { title, abstract, body, keywords }
+ */
+app.post('/api/articles', requireAuth, async (req, res) => {
+  const { title, abstract, body, keywords } = req.body;
+
+  if (!title || !body) {
+    return res
+      .status(400)
+      .json({ error: 'Title and body are required' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO articles (user_id, title, abstract, body, keywords, status)
+       VALUES ($1, $2, $3, $4, $5, 'submitted')
+       RETURNING id, user_id, title, abstract, body, keywords, status, created_at, updated_at`,
+      [req.user.id, title, abstract || null, body, keywords || null]
+    );
+
+    const article = result.rows[0];
+    return res.json({
+      message: 'Article submitted',
+      article,
+    });
+  } catch (err) {
+    console.error('Submit article error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
     return res.json({
 
       message: 'Login successful',
