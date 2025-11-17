@@ -291,6 +291,97 @@ app.get('/api/public/articles', async (req, res) => {
 });
 
 /**
+ * Add comment to an article: POST /api/articles/:id/comments
+ * Headers: Authorization: Bearer <token>
+ * Body: { text }
+ */
+app.post('/api/articles/:id/comments', requireAuth, async (req, res) => {
+  const articleId = parseInt(req.params.id, 10);
+  const { text } = req.body;
+
+  if (!articleId || Number.isNaN(articleId)) {
+    return res.status(400).json({ error: 'Invalid article id' });
+  }
+
+  if (!text) {
+    return res.status(400).json({ error: 'Comment text is required' });
+  }
+
+  try {
+    // Optional: ensure article exists
+    const art = await pool.query(
+      'SELECT id FROM articles WHERE id = $1',
+      [articleId]
+    );
+    if (art.rows.length === 0) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO comments (article_id, user_id, text)
+       VALUES ($1, $2, $3)
+       RETURNING id, article_id, user_id, text, created_at`,
+      [articleId, req.user.id, text]
+    );
+
+    const comment = result.rows[0];
+    return res.json({
+      message: 'Comment added',
+      comment,
+    });
+  } catch (err) {
+    console.error('Add comment error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+/**
+ * List comments for an article: GET /api/articles/:id/comments
+ * Public: no auth required for reading.
+ */
+app.get('/api/articles/:id/comments', async (req, res) => {
+  const articleId = parseInt(req.params.id, 10);
+
+  if (!articleId || Number.isNaN(articleId)) {
+    return res.status(400).json({ error: 'Invalid article id' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT
+         c.id,
+         c.article_id,
+         c.user_id,
+         c.text,
+         c.created_at,
+         u.first_name,
+         u.last_name
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.article_id = $1
+       ORDER BY c.created_at ASC`,
+      [articleId]
+    );
+
+    const comments = result.rows.map((row) => ({
+      id: row.id,
+      article_id: row.article_id,
+      user_id: row.user_id,
+      text: row.text,
+      created_at: row.created_at,
+      author_name: row.first_name && row.last_name
+        ? `${row.first_name} ${row.last_name}`
+        : null,
+    }));
+
+    return res.json({ comments });
+  } catch (err) {
+    console.error('List comments error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+/**
  * Forgot password: POST /api/auth/forgot-password
  * Body: { email }
  */
