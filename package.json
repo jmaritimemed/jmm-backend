@@ -1,0 +1,23 @@
+{
+  "name": "jmm-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test-mail": "node test-mail.js",
+    "init-db": "node init-db.js",
+    "init-pg": "node init-pg.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.21.1",
+    "nodemailer": "^6.9.15",
+    "pg": "^8.13.0",
+    "sqlite3": "^5.1.7"
+  }
+}
+
